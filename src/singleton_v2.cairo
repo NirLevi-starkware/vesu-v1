@@ -214,8 +214,6 @@ mod SingletonV2 {
         delegations: LegacyMap::<(felt252, ContractAddress, ContractAddress), bool>,
         // tracks the reentrancy lock status to prohibit reentrancy when loading the context or the asset config
         lock: bool,
-        // tracks the singleton v1 address
-        singleton_v1: ContractAddress,
         // tracks the whitelisted extensions
         whitelisted_extensions: LegacyMap::<ContractAddress, bool>,
         #[substorage(v0)]
@@ -426,8 +424,7 @@ mod SingletonV2 {
     impl OwnableTwoStepImpl = OwnableComponent::OwnableTwoStepImpl<ContractState>;
 
     #[constructor]
-    fn constructor(ref self: ContractState, singleton_v1: ContractAddress, owner: ContractAddress) {
-        self.singleton_v1.write(singleton_v1);
+    fn constructor(ref self: ContractState, owner: ContractAddress) {
         self.ownable.initializer(owner);
     }
 

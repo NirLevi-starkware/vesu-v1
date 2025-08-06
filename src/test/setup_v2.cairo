@@ -24,7 +24,6 @@ use vesu::{
             IMockPragmaSummaryDispatcherTrait
         },
         mock_ekubo_core::{IMockEkuboCoreDispatcher, IMockEkuboCoreDispatcherTrait},
-        mock_ekubo_oracle::{IMockEkuboOracleDispatcher, IMockEkuboOracleDispatcherTrait}
     }
 };
 

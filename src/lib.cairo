@@ -10,7 +10,6 @@ mod extension {
     mod default_extension_po_v2;
     mod interface;
     mod components {
-        mod ekubo_oracle;
         mod fee_model;
         mod interest_rate_model;
         mod position_hooks;
@@ -29,7 +28,6 @@ mod vendor {
 mod test {
     mod mock_asset;
     mod mock_ekubo_core;
-    mod mock_ekubo_oracle;
     mod mock_extension;
     mod mock_oracle;
     mod mock_singleton;

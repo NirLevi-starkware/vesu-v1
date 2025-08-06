@@ -6,8 +6,6 @@ mod packing;
 mod singleton_v2;
 mod units;
 
-mod v_token;
-
 mod extension {
     mod default_extension_po_v2;
     mod interface;
@@ -17,7 +15,6 @@ mod extension {
         mod interest_rate_model;
         mod position_hooks;
         mod pragma_oracle;
-        mod tokenization;
     }
 }
 
@@ -56,5 +53,4 @@ mod test {
     mod test_singleton_v2;
     mod test_transfer_position;
     mod test_upgrade;
-    mod test_v_token;
 }

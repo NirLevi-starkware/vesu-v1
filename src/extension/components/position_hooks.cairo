@@ -85,7 +85,7 @@ mod position_hooks_component {
         singleton_v2::{ISingletonV2Dispatcher, ISingletonV2DispatcherTrait},
         common::{calculate_collateral, is_collateralized, calculate_collateral_and_debt_value, calculate_debt},
         extension::{
-            default_extension_po_v2::{IDefaultExtensionCallback, ITokenizationCallback},
+            default_extension_po_v2::IDefaultExtensionCallback,
             components::position_hooks::{
                 ShutdownMode, ShutdownStatus, ShutdownConfig, LiquidationConfig, LiquidationData, Pair,
                 assert_shutdown_config, assert_liquidation_config, ShutdownState
@@ -174,11 +174,7 @@ mod position_hooks_component {
 
     #[generate_trait]
     impl PositionHooksTrait<
-        TContractState,
-        +HasComponent<TContractState>,
-        +IDefaultExtensionCallback<TContractState>,
-        +ITokenizationCallback<TContractState>,
-        +Drop<TContractState>
+        TContractState, +HasComponent<TContractState>, +IDefaultExtensionCallback<TContractState>, +Drop<TContractState>
     > of Trait<TContractState> {
         /// Checks if a pair is collateralized based on the current oracle prices and the shutdown ltv configuration.
         /// # Arguments
@@ -588,31 +584,6 @@ mod position_hooks_component {
                         && from_context.debt_asset == to_context.debt_asset,
                     "shutdown-pair-mismatch"
                 );
-            }
-
-            // mint vTokens if collateral shares are transferred to the corresponding vToken pairing
-            if to_context.debt_asset == Zeroable::zero() && to_context.user == get_contract_address() {
-                assert!(from_context.collateral_asset == to_context.collateral_asset, "v-token-to-asset-mismatch");
-                let mut tokenization = self.get_contract_mut();
-                tokenization
-                    .mint_or_burn_v_token(
-                        to_context.pool_id,
-                        to_context.collateral_asset,
-                        caller,
-                        i257_new(collateral_shares_delta, false)
-                    );
-            }
-
-            // burn vTokens if collateral shares are transferred from the corresponding vToken pairing
-            if from_context.debt_asset == Zeroable::zero() && from_context.user == get_contract_address() {
-                assert!(from_context.collateral_asset == to_context.collateral_asset, "v-token-from-asset-mismatch");
-                ISingletonV2Dispatcher { contract_address: self.get_contract().singleton() }
-                    .modify_delegation(from_context.pool_id, caller, false);
-                let mut tokenization = self.get_contract_mut();
-                tokenization
-                    .mint_or_burn_v_token(
-                        to_context.pool_id, to_context.collateral_asset, caller, i257_new(collateral_shares_delta, true)
-                    );
             }
 
             true

@@ -14,10 +14,7 @@ mod fee_model_component {
             ISingletonV2Dispatcher, ISingletonV2DispatcherTrait, ModifyPositionParams, UpdatePositionResponse
         },
         data_model::{Amount, AmountDenomination, AmountType},
-        extension::{
-            components::fee_model::FeeConfig,
-            default_extension_po_v2::{IDefaultExtensionCallback, ITokenizationCallback}
-        },
+        extension::{components::fee_model::FeeConfig, default_extension_po_v2::IDefaultExtensionCallback},
         vendor::erc20::{ERC20ABIDispatcher as IERC20Dispatcher, ERC20ABIDispatcherTrait},
     };
 
@@ -69,10 +66,7 @@ mod fee_model_component {
 
     #[generate_trait]
     impl FeeModelTrait<
-        TContractState,
-        +HasComponent<TContractState>,
-        +IDefaultExtensionCallback<TContractState>,
-        +ITokenizationCallback<TContractState>
+        TContractState, +HasComponent<TContractState>, +IDefaultExtensionCallback<TContractState>,
     > of Trait<TContractState> {
         /// Sets the fee configuration for a pool
         /// # Arguments
@@ -93,11 +87,7 @@ mod fee_model_component {
             let (position, _, _) = ISingletonV2Dispatcher { contract_address: singleton }
                 .position(pool_id, collateral_asset, Zeroable::zero(), get_contract_address());
 
-            let v_token = IERC20Dispatcher {
-                contract_address: self.get_contract().v_token_for_collateral_asset(pool_id, collateral_asset)
-            };
-
-            let amount = position.collateral_shares - (v_token.total_supply());
+            let amount = position.collateral_shares;
 
             let UpdatePositionResponse { collateral_delta, .. } = ISingletonV2Dispatcher { contract_address: singleton }
                 .modify_position(

@@ -265,7 +265,7 @@ mod position_hooks_component {
         /// # Returns
         /// * `shutdown_status` - shutdown status
         fn shutdown_status(self: @ComponentState<TContractState>, ref context: Context) -> ShutdownStatus {
-            // if is in either subscription period, redemption period, then return mode
+            // if we are in either subscription period, redemption period, then return mode
             let ShutdownState { mut shutdown_mode, .. } = self.fixed_shutdown_mode.read();
 
             // check oracle status

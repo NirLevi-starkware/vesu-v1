@@ -391,6 +391,8 @@ fn create_pool(
             creator
         );
     stop_prank(CheatTarget::One(extension.contract_address));
+
+    assert!(extension.pool_name() == 'DefaultExtensionPOV2', "pool name not set");
 }
 
 fn setup_pool(

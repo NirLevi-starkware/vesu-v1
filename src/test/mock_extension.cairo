@@ -30,35 +30,33 @@ mod MockExtension {
             self.singleton.read()
         }
 
-        fn price(self: @ContractState, pool_id: felt252, asset: ContractAddress) -> AssetPrice {
+        fn price(self: @ContractState, asset: ContractAddress) -> AssetPrice {
             ISingletonV2Dispatcher { contract_address: self.singleton.read() }
-                .context(pool_id, asset, Zeroable::zero(), Zeroable::zero());
+                .context(asset, Zeroable::zero(), Zeroable::zero());
             AssetPrice { value: SCALE, is_valid: true }
         }
 
         fn interest_rate(
             self: @ContractState,
-            pool_id: felt252,
             asset: ContractAddress,
             utilization: u256,
             last_updated: u64,
             last_full_utilization_rate: u256,
         ) -> u256 {
             ISingletonV2Dispatcher { contract_address: self.singleton.read() }
-                .context(pool_id, asset, Zeroable::zero(), Zeroable::zero());
+                .context(asset, Zeroable::zero(), Zeroable::zero());
             SCALE
         }
 
         fn rate_accumulator(
             self: @ContractState,
-            pool_id: felt252,
             asset: ContractAddress,
             utilization: u256,
             last_updated: u64,
             last_rate_accumulator: u256,
             last_full_utilization_rate: u256,
         ) -> (u256, u256) {
-            ISingletonV2Dispatcher { contract_address: self.singleton.read() }.asset_config(pool_id, asset);
+            ISingletonV2Dispatcher { contract_address: self.singleton.read() }.asset_config(asset);
             (SCALE, SCALE)
         }
 

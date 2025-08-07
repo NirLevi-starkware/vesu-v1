@@ -160,7 +160,7 @@ fn setup_env(
         contract_address: deploy_with_args("DefaultExtensionPOV2", args)
     };
 
-    singleton.set_extension_whitelist(extension.contract_address, true);
+    singleton.set_extension(extension.contract_address);
 
     // deploy collateral and borrow assets
     let (collateral_asset, debt_asset, third_asset) = if collateral_address.is_non_zero()
@@ -226,12 +226,11 @@ fn setup_env(
     }
 
     // create pool config
-    let pool_id = singleton.calculate_pool_id(extension.contract_address, 1);
     let collateral_scale = pow_10(collateral_asset.decimals().into());
     let debt_scale = pow_10(debt_asset.decimals().into());
     let third_scale = pow_10(third_asset.decimals().into());
     let config = TestConfig {
-        pool_id, collateral_asset, debt_asset, collateral_scale, debt_scale, third_asset, third_scale
+        pool_id: 0, collateral_asset, debt_asset, collateral_scale, debt_scale, third_asset, third_scale
     };
 
     Env { singleton, extension, config, users }
@@ -392,8 +391,6 @@ fn create_pool(
             creator
         );
     stop_prank(CheatTarget::One(extension.contract_address));
-
-    assert!(extension.pool_name(config.pool_id) == 'DefaultExtensionPOV2', "pool name not set");
 }
 
 fn setup_pool(
@@ -425,7 +422,7 @@ fn setup_pool(
     let liquidity_to_deposit_third = third_scale;
     let collateral_to_deposit = collateral_scale;
     let debt_to_draw = debt_scale / 2; // 50% LTV
-    let (asset_config, _) = singleton.asset_config(pool_id, debt_asset.contract_address);
+    let (asset_config, _) = singleton.asset_config(debt_asset.contract_address);
     let rate_accumulator = asset_config.last_rate_accumulator;
     let nominal_debt_to_draw = singleton.calculate_nominal_debt(debt_to_draw.into(), rate_accumulator, debt_scale);
 
@@ -446,10 +443,10 @@ fn setup_pool(
     }
 
     start_prank(CheatTarget::One(extension.contract_address), users.creator);
-    extension.set_asset_parameter(pool_id, collateral_asset.contract_address, 'floor', SCALE / 10_000);
-    extension.set_asset_parameter(pool_id, debt_asset.contract_address, 'floor', SCALE / 10_000);
-    extension.set_asset_parameter(pool_id, third_asset.contract_address, 'floor', SCALE / 10_000);
-    extension.set_shutdown_mode_agent(pool_id, get_contract_address());
+    extension.set_asset_parameter(collateral_asset.contract_address, 'floor', SCALE / 10_000);
+    extension.set_asset_parameter(debt_asset.contract_address, 'floor', SCALE / 10_000);
+    extension.set_asset_parameter(third_asset.contract_address, 'floor', SCALE / 10_000);
+    extension.set_shutdown_mode_agent(get_contract_address());
     stop_prank(CheatTarget::One(extension.contract_address));
 
     (singleton, extension, config, users, terms)

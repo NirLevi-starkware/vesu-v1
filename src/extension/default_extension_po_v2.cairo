@@ -48,6 +48,9 @@ trait IDefaultExtensionCallback<TContractState> {
 
 #[starknet::interface]
 trait IDefaultExtensionPOV2<TContractState> {
+    fn pool_name(self: @TContractState) -> felt252;
+    fn pool_owner(self: @TContractState) -> ContractAddress;
+    fn shutdown_mode_agent(self: @TContractState) -> ContractAddress;
     fn pragma_oracle(self: @TContractState) -> ContractAddress;
     fn pragma_summary(self: @TContractState) -> ContractAddress;
     fn oracle_config(self: @TContractState, asset: ContractAddress) -> OracleConfig;
@@ -107,6 +110,7 @@ trait IDefaultExtensionPOV2<TContractState> {
         shutdown_ltv_config: LTVConfig
     );
     fn set_shutdown_mode(ref self: TContractState, shutdown_mode: ShutdownMode);
+    fn set_pool_owner(ref self: TContractState, owner: ContractAddress);
     fn set_shutdown_mode_agent(ref self: TContractState, shutdown_mode_agent: ContractAddress);
     fn update_shutdown_status(
         ref self: TContractState, collateral_asset: ContractAddress, debt_asset: ContractAddress
@@ -294,6 +298,27 @@ mod DefaultExtensionPOV2 {
 
     #[abi(embed_v0)]
     impl DefaultExtensionPOV2Impl of IDefaultExtensionPOV2<ContractState> {
+        /// Returns the name of a pool
+        /// # Returns
+        /// * `name` - name of the pool
+        fn pool_name(self: @ContractState) -> felt252 {
+            self.pool_name.read()
+        }
+
+        /// Returns the owner of a pool
+        /// # Returns
+        /// * `owner` - address of the owner
+        fn pool_owner(self: @ContractState) -> ContractAddress {
+            self.owner.read()
+        }
+
+        /// Returns the address of the shutdown mode agent
+        /// # Returns
+        /// * `shutdown_mode_agent` - address of the shutdown mode agent
+        fn shutdown_mode_agent(self: @ContractState) -> ContractAddress {
+            self.shutdown_mode_agent.read()
+        }
+
         /// Returns the address of the pragma oracle contract
         /// # Returns
         /// * `oracle_address` - address of the pragma oracle contract
@@ -414,10 +439,6 @@ mod DefaultExtensionPOV2 {
             // assert that all arrays have equal length
             assert!(asset_params.len() == interest_rate_configs.len(), "interest-rate-params-mismatch");
             assert!(asset_params.len() == pragma_oracle_params.len(), "pragma-oracle-params-mismatch");
-
-            // create the pool in the singleton
-            let singleton = ISingletonV2Dispatcher { contract_address: self.singleton.read() };
-            singleton.create_pool(asset_params, ltv_params, get_contract_address());
 
             // set the pool name
             self.pool_name.write(name);
@@ -642,6 +663,15 @@ mod DefaultExtensionPOV2 {
         ) {
             assert!(get_caller_address() == self.owner.read(), "caller-not-owner");
             self.position_hooks.set_shutdown_ltv_config(collateral_asset, debt_asset, shutdown_ltv_config);
+        }
+
+        /// Sets the owner of a pool
+        /// # Arguments
+        /// * `owner` - address of the new owner
+        fn set_pool_owner(ref self: ContractState, owner: ContractAddress) {
+            assert!(get_caller_address() == self.owner.read(), "caller-not-owner");
+            self.owner.write(owner);
+            self.emit(SetPoolOwner { owner });
         }
 
         /// Sets the shutdown mode agent

@@ -50,12 +50,6 @@ trait ISingletonV2<TContractState> {
     fn context(
         self: @TContractState, collateral_asset: ContractAddress, debt_asset: ContractAddress, user: ContractAddress,
     ) -> Context;
-    fn create_pool(
-        ref self: TContractState,
-        asset_params: Span<AssetParams>,
-        ltv_params: Span<LTVParams>,
-        extension: ContractAddress
-    );
     fn modify_position(ref self: TContractState, params: ModifyPositionParams) -> UpdatePositionResponse;
     fn transfer_position(ref self: TContractState, params: TransferPositionParams);
     fn liquidate_position(ref self: TContractState, params: LiquidatePositionParams) -> UpdatePositionResponse;
@@ -313,8 +307,15 @@ mod SingletonV2 {
     impl OwnableTwoStepImpl = OwnableComponent::OwnableTwoStepImpl<ContractState>;
 
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress) {
+    fn constructor(
+        ref self: ContractState,
+        owner: ContractAddress,
+        asset_params: Span<AssetParams>,
+        ltv_params: Span<LTVParams>,
+        extension: ContractAddress
+    ) {
         self.ownable.initializer(owner);
+        self.create_pool(:asset_params, :ltv_params, :extension);
     }
 
     /// Computes the new rate accumulator and the interest rate at full utilization for a given asset in a pool
@@ -539,8 +540,8 @@ mod SingletonV2 {
 
             // store updated context
             self.positions.write((collateral_asset, debt_asset, user), context.position);
-            self.asset_configs.write((collateral_asset), context.collateral_asset_config);
-            self.asset_configs.write((debt_asset), context.debt_asset_config);
+            self.asset_configs.write(collateral_asset, context.collateral_asset_config);
+            self.asset_configs.write(debt_asset, context.debt_asset_config);
 
             self
                 .emit(
@@ -571,6 +572,40 @@ mod SingletonV2 {
                 collateral_delta, collateral_shares_delta, debt_delta, nominal_debt_delta, bad_debt
             }
         }
+
+        /// Creates a new pool
+        /// # Arguments
+        /// * `asset_params` - array of asset parameters
+        /// * `ltv_params` - array of loan-to-value parameters
+        /// * `extension` - address of the extension contract
+        fn create_pool(
+            ref self: ContractState,
+            asset_params: Span<AssetParams>,
+            mut ltv_params: Span<LTVParams>,
+            extension: ContractAddress
+        ) {
+            // link the extension to the pool
+            self._set_extension(extension);
+
+            // store all asset configurations
+            let mut asset_params_copy = asset_params;
+            while !asset_params_copy
+                .is_empty() {
+                    let params = *asset_params_copy.pop_front().unwrap();
+                    self.set_asset_config(params);
+                };
+
+            // store all loan-to-value configurations for each asset pair
+            while !ltv_params
+                .is_empty() {
+                    let params = *ltv_params.pop_front().unwrap();
+                    let collateral_asset = *asset_params.at(params.collateral_asset_index).asset;
+                    let debt_asset = *asset_params.at(params.debt_asset_index).asset;
+                    self.set_ltv_config(collateral_asset, debt_asset, LTVConfig { max_ltv: params.max_ltv });
+                };
+
+            self.emit(CreatePool { extension, creator: get_caller_address() });
+        }
     }
 
     #[abi(embed_v0)]
@@ -592,7 +627,7 @@ mod SingletonV2 {
             let extension = self.extension.read();
             assert!(extension.is_non_zero(), "unknown-pool");
 
-            let mut asset_config = self.asset_configs.read((asset));
+            let mut asset_config = self.asset_configs.read(asset);
             let mut fee_shares = 0;
 
             if asset_config.last_updated != get_block_timestamp() && asset != Zeroable::zero() {
@@ -812,40 +847,6 @@ mod SingletonV2 {
             context
         }
 
-        /// Creates a new pool
-        /// # Arguments
-        /// * `asset_params` - array of asset parameters
-        /// * `ltv_params` - array of loan-to-value parameters
-        /// * `extension` - address of the extension contract
-        fn create_pool(
-            ref self: ContractState,
-            asset_params: Span<AssetParams>,
-            mut ltv_params: Span<LTVParams>,
-            extension: ContractAddress
-        ) {
-            // link the extension to the pool
-            self._set_extension(extension);
-
-            // store all asset configurations
-            let mut asset_params_copy = asset_params;
-            while !asset_params_copy
-                .is_empty() {
-                    let params = *asset_params_copy.pop_front().unwrap();
-                    self.set_asset_config(params);
-                };
-
-            // store all loan-to-value configurations for each asset pair
-            while !ltv_params
-                .is_empty() {
-                    let params = *ltv_params.pop_front().unwrap();
-                    let collateral_asset = *asset_params.at(params.collateral_asset_index).asset;
-                    let debt_asset = *asset_params.at(params.debt_asset_index).asset;
-                    self.set_ltv_config(collateral_asset, debt_asset, LTVConfig { max_ltv: params.max_ltv });
-                };
-
-            self.emit(CreatePool { extension, creator: get_caller_address() });
-        }
-
         /// Adjusts a positions collateral and debt balances
         /// # Arguments
         /// * `params` - see ModifyPositionParams
@@ -1000,7 +1001,7 @@ mod SingletonV2 {
                 // store the updated positions and asset configuration
                 self.positions.write((from_collateral_asset, from_debt_asset, from_user), from_position);
                 self.positions.write((to_collateral_asset, to_debt_asset, to_user), to_position);
-                self.asset_configs.write((from_collateral_asset), collateral_asset_config);
+                self.asset_configs.write(from_collateral_asset, collateral_asset_config);
 
                 (collateral_delta, collateral_shares_delta)
             } else {
@@ -1022,8 +1023,8 @@ mod SingletonV2 {
                     );
 
                 // store the updated asset configurations
-                self.asset_configs.write((from_collateral_asset), from_collateral_asset_config);
-                self.asset_configs.write((to_collateral_asset), to_collateral_asset_config);
+                self.asset_configs.write(from_collateral_asset, from_collateral_asset_config);
+                self.asset_configs.write(to_collateral_asset, to_collateral_asset_config);
 
                 (Zeroable::zero(), Zeroable::zero())
             };
@@ -1268,7 +1269,7 @@ mod SingletonV2 {
             self.attribute_fee_shares(self.extension.read(), asset, fee_shares);
             // donate amount to the reserve
             asset_config.reserve += amount;
-            self.asset_configs.write((asset), asset_config);
+            self.asset_configs.write(asset, asset_config);
             transfer_asset(asset, get_caller_address(), get_contract_address(), amount, asset_config.is_legacy);
 
             self.emit(Donate { asset, amount });
@@ -1290,7 +1291,7 @@ mod SingletonV2 {
             self.attribute_fee_shares(extension, asset, fee_shares);
             // retrieve amount from the reserve
             asset_config.reserve -= amount;
-            self.asset_configs.write((asset), asset_config);
+            self.asset_configs.write(asset, asset_config);
             transfer_asset(asset, get_contract_address(), receiver, amount, asset_config.is_legacy);
 
             self.emit(RetrieveReserve { asset, receiver });
@@ -1343,7 +1344,7 @@ mod SingletonV2 {
 
             assert_asset_config(asset_config);
             assert_storable_asset_config(asset_config);
-            self.asset_configs.write((params.asset), asset_config);
+            self.asset_configs.write(params.asset, asset_config);
 
             self.emit(SetAssetConfig { asset: params.asset });
 
@@ -1375,7 +1376,7 @@ mod SingletonV2 {
 
             assert_asset_config(asset_config);
             assert_storable_asset_config(asset_config);
-            self.asset_configs.write((asset), asset_config);
+            self.asset_configs.write(asset, asset_config);
 
             self.emit(SetAssetParameter { asset, parameter, value });
         }

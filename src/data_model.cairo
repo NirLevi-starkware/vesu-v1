@@ -120,7 +120,6 @@ struct TransferPositionParams {
     to_collateral_asset: ContractAddress,
     to_debt_asset: ContractAddress,
     from_user: ContractAddress,
-    to_user: ContractAddress,
     collateral: UnsignedAmount,
     debt: UnsignedAmount,
     from_data: Span<felt252>,

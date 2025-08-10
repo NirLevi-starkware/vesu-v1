@@ -911,7 +911,7 @@ mod SingletonV2 {
             response
         }
 
-        /// Transfers a position's collateral and or debt balances to another position in the same pool.
+        /// Transfers a position's collateral and or debt balances to another `from_user` position.
         /// Either the collateral or debt asset addresses match. For transfers to the same position
         /// `modify_position` should be used instead.
         /// # Arguments
@@ -922,7 +922,6 @@ mod SingletonV2 {
             to_collateral_asset,
             to_debt_asset,
             from_user,
-            to_user,
             collateral,
             debt,
             from_data,
@@ -932,8 +931,7 @@ mod SingletonV2 {
             // ensure that it is not a transfer to the same position
             assert!(
                 !(from_collateral_asset == to_collateral_asset
-                    && from_debt_asset == to_debt_asset
-                    && from_user == to_user),
+                    && from_debt_asset == to_debt_asset),
                 "same-position"
             );
 
@@ -946,6 +944,7 @@ mod SingletonV2 {
             let from_context = self.context(from_collateral_asset, from_debt_asset, from_user);
             let from_collateral_asset_fee_shares = from_context.collateral_asset_fee_shares;
             let from_debt_asset_fee_shares = from_context.debt_asset_fee_shares;
+            let to_user = from_user;
             let to_context = self.context(to_collateral_asset, to_debt_asset, to_user);
             let to_collateral_asset_fee_shares = to_context.collateral_asset_fee_shares;
             let to_debt_asset_fee_shares = to_context.debt_asset_fee_shares;

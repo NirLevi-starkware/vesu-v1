@@ -628,6 +628,7 @@ mod SingletonV2 {
             assert!(extension.is_non_zero(), "unknown-pool");
 
             let mut asset_config = self.asset_configs.read(asset);
+            assert!(asset_config.scale != 0 || asset == Zeroable::zero(), "asset-not-exists");
             let mut fee_shares = 0;
 
             if asset_config.last_updated != get_block_timestamp() && asset != Zeroable::zero() {

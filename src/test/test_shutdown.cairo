@@ -415,218 +415,218 @@ mod TestShutdown {
         stop_prank(CheatTarget::One(singleton.contract_address));
     }
 
-    // #[test]
-    // fn test_subscription_mode_decreasing_debt() {
-    //     let (singleton, extension, config, users, terms) = setup();
-    //     let TestConfig { pool_id, collateral_asset, debt_asset, .. } = config;
-    //     let LendingTerms { liquidity_to_deposit, collateral_to_deposit, nominal_debt_to_draw, .. } = terms;
+    #[test]
+    fn test_subscription_mode_decreasing_debt() {
+        let (singleton, extension, config, users, terms) = setup();
+        let TestConfig { pool_id, collateral_asset, debt_asset, .. } = config;
+        let LendingTerms { liquidity_to_deposit, collateral_to_deposit, nominal_debt_to_draw, .. } = terms;
 
-    //     // User 1
+        // User 1
 
-    //     // deposit collateral which is later borrowed by the borrower
-    //     let params = ModifyPositionParams {
-    //         pool_id,
-    //         collateral_asset: debt_asset.contract_address,
-    //         debt_asset: collateral_asset.contract_address,
-    //         user: users.lender,
-    //         collateral: Amount {
-    //             amount_type: AmountType::Delta,
-    //             denomination: AmountDenomination::Assets,
-    //             value: liquidity_to_deposit.into(),
-    //         },
-    //         debt: Default::default(),
-    //         data: ArrayTrait::new().span()
-    //     };
+        // deposit collateral which is later borrowed by the borrower
+        let params = ModifyPositionParams {
+            pool_id,
+            collateral_asset: debt_asset.contract_address,
+            debt_asset: collateral_asset.contract_address,
+            user: users.lender,
+            collateral: Amount {
+                amount_type: AmountType::Delta,
+                denomination: AmountDenomination::Assets,
+                value: liquidity_to_deposit.into(),
+            },
+            debt: Default::default(),
+            data: ArrayTrait::new().span()
+        };
 
-    //     start_prank(CheatTarget::One(singleton.contract_address), users.lender);
-    //     singleton.modify_position(params);
-    //     stop_prank(CheatTarget::One(singleton.contract_address));
+        start_prank(CheatTarget::One(singleton.contract_address), users.lender);
+        singleton.modify_position(params);
+        stop_prank(CheatTarget::One(singleton.contract_address));
 
-    //     // User 2
+        // User 2
 
-    //     let params = ModifyPositionParams {
-    //         pool_id,
-    //         collateral_asset: collateral_asset.contract_address,
-    //         debt_asset: debt_asset.contract_address,
-    //         user: users.borrower,
-    //         collateral: Amount {
-    //             amount_type: AmountType::Target,
-    //             denomination: AmountDenomination::Assets,
-    //             value: collateral_to_deposit.into(),
-    //         },
-    //         debt: Amount {
-    //             amount_type: AmountType::Target,
-    //             denomination: AmountDenomination::Native,
-    //             value: nominal_debt_to_draw.into(),
-    //         },
-    //         data: ArrayTrait::new().span()
-    //     };
+        let params = ModifyPositionParams {
+            pool_id,
+            collateral_asset: collateral_asset.contract_address,
+            debt_asset: debt_asset.contract_address,
+            user: users.borrower,
+            collateral: Amount {
+                amount_type: AmountType::Target,
+                denomination: AmountDenomination::Assets,
+                value: collateral_to_deposit.into(),
+            },
+            debt: Amount {
+                amount_type: AmountType::Target,
+                denomination: AmountDenomination::Native,
+                value: nominal_debt_to_draw.into(),
+            },
+            data: ArrayTrait::new().span()
+        };
 
-    //     start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
-    //     singleton.modify_position(params);
-    //     stop_prank(CheatTarget::One(singleton.contract_address));
+        start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
+        singleton.modify_position(params);
+        stop_prank(CheatTarget::One(singleton.contract_address));
 
-    //     // reduce oracle price
-    //     let mock_pragma_oracle = IMockPragmaOracleDispatcher { contract_address: extension.pragma_oracle() };
-    //     mock_pragma_oracle.set_price(COLL_PRAGMA_KEY, SCALE_128 / 41 / 10);
+        // reduce oracle price
+        let mock_pragma_oracle = IMockPragmaOracleDispatcher { contract_address: extension.pragma_oracle() };
+        mock_pragma_oracle.set_price(COLL_PRAGMA_KEY, SCALE_128 / 41 / 10);
 
-    //     // Recovery
-    //     start_prank(CheatTarget::One(extension.contract_address), users.creator);
-    //     extension.set_shutdown_mode(pool_id, ShutdownMode::Recovery);
-    //     stop_prank(CheatTarget::One(extension.contract_address));
+        // Recovery
+        start_prank(CheatTarget::One(extension.contract_address), users.creator);
+        extension.set_shutdown_mode(pool_id, ShutdownMode::Recovery);
+        stop_prank(CheatTarget::One(extension.contract_address));
 
-    //     let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
-    //     assert(status.shutdown_mode == ShutdownMode::Recovery, 'not-in-recovery');
+        let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
+        assert(status.shutdown_mode == ShutdownMode::Recovery, 'not-in-recovery');
 
-    //     let v_token = IERC4626Dispatcher {
-    //         contract_address: extension.v_token_for_collateral_asset(pool_id, collateral_asset.contract_address)
-    //     };
-    //     assert(v_token.max_deposit(Zeroable::zero()) > 0, 'max_deposit neq');
-    //     assert(v_token.preview_deposit(10000000) > 0, 'preview_deposit neq');
-    //     assert(v_token.max_mint(Zeroable::zero()) > 0, 'max_mint neq');
-    //     assert(v_token.preview_mint(100000000) > 0, 'preview_mint neq');
-    //     assert(v_token.max_withdraw(users.lender) == 0, 'max_withdraw neq');
-    //     assert(v_token.preview_withdraw(10000000) == 0, 'preview_withdraw neq');
-    //     assert(v_token.max_redeem(users.lender) == 0, 'max_redeem neq');
-    //     assert(v_token.preview_redeem(10000000) == 0, 'preview_redeem neq');
+        let v_token = IERC4626Dispatcher {
+            contract_address: extension.v_token_for_collateral_asset(pool_id, collateral_asset.contract_address)
+        };
+        assert(v_token.max_deposit(Zeroable::zero()) > 0, 'max_deposit neq');
+        assert(v_token.preview_deposit(10000000) > 0, 'preview_deposit neq');
+        assert(v_token.max_mint(Zeroable::zero()) > 0, 'max_mint neq');
+        assert(v_token.preview_mint(100000000) > 0, 'preview_mint neq');
+        assert(v_token.max_withdraw(users.lender) == 0, 'max_withdraw neq');
+        assert(v_token.preview_withdraw(10000000) == 0, 'preview_withdraw neq');
+        assert(v_token.max_redeem(users.lender) == 0, 'max_redeem neq');
+        assert(v_token.preview_redeem(10000000) == 0, 'preview_redeem neq');
 
-    //     let shutdown_config = extension.shutdown_config(pool_id);
+        let shutdown_config = extension.shutdown_config(pool_id);
 
-    //     start_warp(CheatTarget::All, get_block_timestamp() + shutdown_config.recovery_period + 1);
+        start_warp(CheatTarget::All, get_block_timestamp() + shutdown_config.recovery_period + 1);
 
-    //     // Subscription
-    //     start_prank(CheatTarget::One(extension.contract_address), users.creator);
-    //     extension.set_shutdown_mode(pool_id, ShutdownMode::Subscription);
-    //     stop_prank(CheatTarget::One(extension.contract_address));
+        // Subscription
+        start_prank(CheatTarget::One(extension.contract_address), users.creator);
+        extension.set_shutdown_mode(pool_id, ShutdownMode::Subscription);
+        stop_prank(CheatTarget::One(extension.contract_address));
 
-    //     let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
-    //     assert(status.shutdown_mode == ShutdownMode::Subscription, 'not-in-subscription');
+        let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
+        assert(status.shutdown_mode == ShutdownMode::Subscription, 'not-in-subscription');
 
-    //     // User 2
+        // User 2
 
-    //     let params = ModifyPositionParams {
-    //         pool_id,
-    //         collateral_asset: collateral_asset.contract_address,
-    //         debt_asset: debt_asset.contract_address,
-    //         user: users.borrower,
-    //         collateral: Default::default(),
-    //         debt: Amount {
-    //             amount_type: AmountType::Delta, denomination: AmountDenomination::Native, value: -1_u256.into(),
-    //         },
-    //         data: ArrayTrait::new().span()
-    //     };
+        let params = ModifyPositionParams {
+            pool_id,
+            collateral_asset: collateral_asset.contract_address,
+            debt_asset: debt_asset.contract_address,
+            user: users.borrower,
+            collateral: Default::default(),
+            debt: Amount {
+                amount_type: AmountType::Delta, denomination: AmountDenomination::Native, value: -1_u256.into(),
+            },
+            data: ArrayTrait::new().span()
+        };
 
-    //     start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
-    //     singleton.modify_position(params);
-    //     stop_prank(CheatTarget::One(singleton.contract_address));
-    // }
+        start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
+        singleton.modify_position(params);
+        stop_prank(CheatTarget::One(singleton.contract_address));
+    }
 
-    // #[test]
-    // #[should_panic(expected: "in-subscription")]
-    // fn test_subscription_mode_increasing_collateral() {
-    //     let (singleton, extension, config, users, terms) = setup();
-    //     let TestConfig { pool_id, collateral_asset, debt_asset, .. } = config;
-    //     let LendingTerms { liquidity_to_deposit, collateral_to_deposit, nominal_debt_to_draw, .. } = terms;
+    #[test]
+    #[should_panic(expected: "in-subscription")]
+    fn test_subscription_mode_increasing_collateral() {
+        let (singleton, extension, config, users, terms) = setup();
+        let TestConfig { pool_id, collateral_asset, debt_asset, .. } = config;
+        let LendingTerms { liquidity_to_deposit, collateral_to_deposit, nominal_debt_to_draw, .. } = terms;
 
-    //     // User 1
+        // User 1
 
-    //     // deposit collateral which is later borrowed by the borrower
-    //     let params = ModifyPositionParams {
-    //         pool_id,
-    //         collateral_asset: debt_asset.contract_address,
-    //         debt_asset: collateral_asset.contract_address,
-    //         user: users.lender,
-    //         collateral: Amount {
-    //             amount_type: AmountType::Delta,
-    //             denomination: AmountDenomination::Assets,
-    //             value: liquidity_to_deposit.into(),
-    //         },
-    //         debt: Default::default(),
-    //         data: ArrayTrait::new().span()
-    //     };
+        // deposit collateral which is later borrowed by the borrower
+        let params = ModifyPositionParams {
+            pool_id,
+            collateral_asset: debt_asset.contract_address,
+            debt_asset: collateral_asset.contract_address,
+            user: users.lender,
+            collateral: Amount {
+                amount_type: AmountType::Delta,
+                denomination: AmountDenomination::Assets,
+                value: liquidity_to_deposit.into(),
+            },
+            debt: Default::default(),
+            data: ArrayTrait::new().span()
+        };
 
-    //     start_prank(CheatTarget::One(singleton.contract_address), users.lender);
-    //     singleton.modify_position(params);
-    //     stop_prank(CheatTarget::One(singleton.contract_address));
+        start_prank(CheatTarget::One(singleton.contract_address), users.lender);
+        singleton.modify_position(params);
+        stop_prank(CheatTarget::One(singleton.contract_address));
 
-    //     // User 2
+        // User 2
 
-    //     let params = ModifyPositionParams {
-    //         pool_id,
-    //         collateral_asset: collateral_asset.contract_address,
-    //         debt_asset: debt_asset.contract_address,
-    //         user: users.borrower,
-    //         collateral: Amount {
-    //             amount_type: AmountType::Target,
-    //             denomination: AmountDenomination::Assets,
-    //             value: collateral_to_deposit.into(),
-    //         },
-    //         debt: Amount {
-    //             amount_type: AmountType::Target,
-    //             denomination: AmountDenomination::Native,
-    //             value: nominal_debt_to_draw.into(),
-    //         },
-    //         data: ArrayTrait::new().span()
-    //     };
+        let params = ModifyPositionParams {
+            pool_id,
+            collateral_asset: collateral_asset.contract_address,
+            debt_asset: debt_asset.contract_address,
+            user: users.borrower,
+            collateral: Amount {
+                amount_type: AmountType::Target,
+                denomination: AmountDenomination::Assets,
+                value: collateral_to_deposit.into(),
+            },
+            debt: Amount {
+                amount_type: AmountType::Target,
+                denomination: AmountDenomination::Native,
+                value: nominal_debt_to_draw.into(),
+            },
+            data: ArrayTrait::new().span()
+        };
 
-    //     start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
-    //     singleton.modify_position(params);
-    //     stop_prank(CheatTarget::One(singleton.contract_address));
+        start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
+        singleton.modify_position(params);
+        stop_prank(CheatTarget::One(singleton.contract_address));
 
-    //     // reduce oracle price
-    //     let mock_pragma_oracle = IMockPragmaOracleDispatcher { contract_address: extension.pragma_oracle() };
-    //     mock_pragma_oracle.set_price(COLL_PRAGMA_KEY, SCALE_128 / 41 / 10);
+        // reduce oracle price
+        let mock_pragma_oracle = IMockPragmaOracleDispatcher { contract_address: extension.pragma_oracle() };
+        mock_pragma_oracle.set_price(COLL_PRAGMA_KEY, SCALE_128 / 41 / 10);
 
-    //     // Recovery
-    //     start_prank(CheatTarget::One(extension.contract_address), users.creator);
-    //     extension.set_shutdown_mode(pool_id, ShutdownMode::Recovery);
-    //     stop_prank(CheatTarget::One(extension.contract_address));
+        // Recovery
+        start_prank(CheatTarget::One(extension.contract_address), users.creator);
+        extension.set_shutdown_mode(pool_id, ShutdownMode::Recovery);
+        stop_prank(CheatTarget::One(extension.contract_address));
 
-    //     let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
-    //     assert(status.shutdown_mode == ShutdownMode::Recovery, 'not-in-recovery');
+        let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
+        assert(status.shutdown_mode == ShutdownMode::Recovery, 'not-in-recovery');
 
-    //     let shutdown_config = extension.shutdown_config(pool_id);
+        let shutdown_config = extension.shutdown_config(pool_id);
 
-    //     start_warp(CheatTarget::All, get_block_timestamp() + shutdown_config.recovery_period + 1);
+        start_warp(CheatTarget::All, get_block_timestamp() + shutdown_config.recovery_period + 1);
 
-    //     // Subscription
-    //     start_prank(CheatTarget::One(extension.contract_address), users.creator);
-    //     extension.set_shutdown_mode(pool_id, ShutdownMode::Subscription);
-    //     stop_prank(CheatTarget::One(extension.contract_address));
+        // Subscription
+        start_prank(CheatTarget::One(extension.contract_address), users.creator);
+        extension.set_shutdown_mode(pool_id, ShutdownMode::Subscription);
+        stop_prank(CheatTarget::One(extension.contract_address));
 
-    //     let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
-    //     assert(status.shutdown_mode == ShutdownMode::Subscription, 'not-in-subscription');
+        let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
+        assert(status.shutdown_mode == ShutdownMode::Subscription, 'not-in-subscription');
 
-    //     let v_token = IERC4626Dispatcher {
-    //         contract_address: extension.v_token_for_collateral_asset(pool_id, collateral_asset.contract_address)
-    //     };
-    //     assert(v_token.max_deposit(Zeroable::zero()) == 0, 'max_deposit neq');
-    //     assert(v_token.preview_deposit(10000000) == 0, 'preview_deposit neq');
-    //     assert(v_token.max_mint(Zeroable::zero()) == 0, 'max_mint neq');
-    //     assert(v_token.preview_mint(100000000) == 0, 'preview_mint neq');
-    //     assert(v_token.max_withdraw(users.lender) == 0, 'max_withdraw neq');
-    //     assert(v_token.preview_withdraw(10000000) == 0, 'preview_withdraw neq');
-    //     assert(v_token.max_redeem(users.lender) == 0, 'max_redeem neq');
-    //     assert(v_token.preview_redeem(10000000) == 0, 'preview_redeem neq');
+        let v_token = IERC4626Dispatcher {
+            contract_address: extension.v_token_for_collateral_asset(pool_id, collateral_asset.contract_address)
+        };
+        assert(v_token.max_deposit(Zeroable::zero()) == 0, 'max_deposit neq');
+        assert(v_token.preview_deposit(10000000) == 0, 'preview_deposit neq');
+        assert(v_token.max_mint(Zeroable::zero()) == 0, 'max_mint neq');
+        assert(v_token.preview_mint(100000000) == 0, 'preview_mint neq');
+        assert(v_token.max_withdraw(users.lender) == 0, 'max_withdraw neq');
+        assert(v_token.preview_withdraw(10000000) == 0, 'preview_withdraw neq');
+        assert(v_token.max_redeem(users.lender) == 0, 'max_redeem neq');
+        assert(v_token.preview_redeem(10000000) == 0, 'preview_redeem neq');
 
-    //     // User 2
+        // User 2
 
-    //     let params = ModifyPositionParams {
-    //         pool_id,
-    //         collateral_asset: collateral_asset.contract_address,
-    //         debt_asset: debt_asset.contract_address,
-    //         user: users.borrower,
-    //         collateral: Amount {
-    //             amount_type: AmountType::Delta, denomination: AmountDenomination::Native, value: SCALE.into(),
-    //         },
-    //         debt: Default::default(),
-    //         data: ArrayTrait::new().span()
-    //     };
+        let params = ModifyPositionParams {
+            pool_id,
+            collateral_asset: collateral_asset.contract_address,
+            debt_asset: debt_asset.contract_address,
+            user: users.borrower,
+            collateral: Amount {
+                amount_type: AmountType::Delta, denomination: AmountDenomination::Native, value: SCALE.into(),
+            },
+            debt: Default::default(),
+            data: ArrayTrait::new().span()
+        };
 
-    //     start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
-    //     singleton.modify_position(params);
-    //     stop_prank(CheatTarget::One(singleton.contract_address));
-    // }
+        start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
+        singleton.modify_position(params);
+        stop_prank(CheatTarget::One(singleton.contract_address));
+    }
 
     #[test]
     #[should_panic(expected: "in-subscription")]
@@ -987,154 +987,154 @@ mod TestShutdown {
         stop_prank(CheatTarget::One(singleton.contract_address));
     }
 
-    // #[test]
-    // #[should_panic(expected: "in-redemption")]
-    // fn test_redemption_mode_increasing_collateral() {
-    //     let (singleton, extension, config, users, terms) = setup();
-    //     let TestConfig { pool_id, collateral_asset, debt_asset, debt_scale, .. } = config;
-    //     let LendingTerms { liquidity_to_deposit, collateral_to_deposit, nominal_debt_to_draw, .. } = terms;
+    #[test]
+    #[should_panic(expected: "in-redemption")]
+    fn test_redemption_mode_increasing_collateral() {
+        let (singleton, extension, config, users, terms) = setup();
+        let TestConfig { pool_id, collateral_asset, debt_asset, debt_scale, .. } = config;
+        let LendingTerms { liquidity_to_deposit, collateral_to_deposit, nominal_debt_to_draw, .. } = terms;
 
-    //     // User 1
+        // User 1
 
-    //     // deposit collateral which is later borrowed by the borrower
-    //     let params = ModifyPositionParams {
-    //         pool_id,
-    //         collateral_asset: debt_asset.contract_address,
-    //         debt_asset: collateral_asset.contract_address,
-    //         user: users.lender,
-    //         collateral: Amount {
-    //             amount_type: AmountType::Delta,
-    //             denomination: AmountDenomination::Assets,
-    //             value: liquidity_to_deposit.into(),
-    //         },
-    //         debt: Default::default(),
-    //         data: ArrayTrait::new().span()
-    //     };
+        // deposit collateral which is later borrowed by the borrower
+        let params = ModifyPositionParams {
+            pool_id,
+            collateral_asset: debt_asset.contract_address,
+            debt_asset: collateral_asset.contract_address,
+            user: users.lender,
+            collateral: Amount {
+                amount_type: AmountType::Delta,
+                denomination: AmountDenomination::Assets,
+                value: liquidity_to_deposit.into(),
+            },
+            debt: Default::default(),
+            data: ArrayTrait::new().span()
+        };
 
-    //     start_prank(CheatTarget::One(singleton.contract_address), users.lender);
-    //     singleton.modify_position(params);
-    //     stop_prank(CheatTarget::One(singleton.contract_address));
+        start_prank(CheatTarget::One(singleton.contract_address), users.lender);
+        singleton.modify_position(params);
+        stop_prank(CheatTarget::One(singleton.contract_address));
 
-    //     // User 2
+        // User 2
 
-    //     let params = ModifyPositionParams {
-    //         pool_id,
-    //         collateral_asset: collateral_asset.contract_address,
-    //         debt_asset: debt_asset.contract_address,
-    //         user: users.borrower,
-    //         collateral: Amount {
-    //             amount_type: AmountType::Target,
-    //             denomination: AmountDenomination::Assets,
-    //             value: collateral_to_deposit.into(),
-    //         },
-    //         debt: Amount {
-    //             amount_type: AmountType::Target,
-    //             denomination: AmountDenomination::Native,
-    //             value: nominal_debt_to_draw.into(),
-    //         },
-    //         data: ArrayTrait::new().span()
-    //     };
+        let params = ModifyPositionParams {
+            pool_id,
+            collateral_asset: collateral_asset.contract_address,
+            debt_asset: debt_asset.contract_address,
+            user: users.borrower,
+            collateral: Amount {
+                amount_type: AmountType::Target,
+                denomination: AmountDenomination::Assets,
+                value: collateral_to_deposit.into(),
+            },
+            debt: Amount {
+                amount_type: AmountType::Target,
+                denomination: AmountDenomination::Native,
+                value: nominal_debt_to_draw.into(),
+            },
+            data: ArrayTrait::new().span()
+        };
 
-    //     start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
-    //     singleton.modify_position(params);
-    //     stop_prank(CheatTarget::One(singleton.contract_address));
+        start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
+        singleton.modify_position(params);
+        stop_prank(CheatTarget::One(singleton.contract_address));
 
-    //     // reduce oracle price
-    //     let mock_pragma_oracle = IMockPragmaOracleDispatcher { contract_address: extension.pragma_oracle() };
-    //     mock_pragma_oracle.set_price(COLL_PRAGMA_KEY, SCALE_128 / 41 / 10);
+        // reduce oracle price
+        let mock_pragma_oracle = IMockPragmaOracleDispatcher { contract_address: extension.pragma_oracle() };
+        mock_pragma_oracle.set_price(COLL_PRAGMA_KEY, SCALE_128 / 41 / 10);
 
-    //     // Recovery
-    //     start_prank(CheatTarget::One(extension.contract_address), users.creator);
-    //     extension.set_shutdown_mode(pool_id, ShutdownMode::Recovery);
-    //     stop_prank(CheatTarget::One(extension.contract_address));
+        // Recovery
+        start_prank(CheatTarget::One(extension.contract_address), users.creator);
+        extension.set_shutdown_mode(pool_id, ShutdownMode::Recovery);
+        stop_prank(CheatTarget::One(extension.contract_address));
 
-    //     let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
-    //     assert(status.shutdown_mode == ShutdownMode::Recovery, 'not-in-recovery');
+        let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
+        assert(status.shutdown_mode == ShutdownMode::Recovery, 'not-in-recovery');
 
-    //     // Subscription
+        // Subscription
 
-    //     let shutdown_config = extension.shutdown_config(pool_id);
+        let shutdown_config = extension.shutdown_config(pool_id);
 
-    //     start_warp(CheatTarget::All, get_block_timestamp() + shutdown_config.recovery_period + 1);
+        start_warp(CheatTarget::All, get_block_timestamp() + shutdown_config.recovery_period + 1);
 
-    //     start_prank(CheatTarget::One(extension.contract_address), users.creator);
-    //     extension.set_shutdown_mode(pool_id, ShutdownMode::Subscription);
-    //     stop_prank(CheatTarget::One(extension.contract_address));
+        start_prank(CheatTarget::One(extension.contract_address), users.creator);
+        extension.set_shutdown_mode(pool_id, ShutdownMode::Subscription);
+        stop_prank(CheatTarget::One(extension.contract_address));
 
-    //     let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
-    //     assert(status.shutdown_mode == ShutdownMode::Subscription, 'not-in-subscription');
+        let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
+        assert(status.shutdown_mode == ShutdownMode::Subscription, 'not-in-subscription');
 
-    //     // fund borrower with debt assets to repay interest
-    //     start_prank(CheatTarget::One(debt_asset.contract_address), users.lender);
-    //     debt_asset.transfer(users.borrower, debt_scale);
-    //     stop_prank(CheatTarget::One(debt_asset.contract_address));
+        // fund borrower with debt assets to repay interest
+        start_prank(CheatTarget::One(debt_asset.contract_address), users.lender);
+        debt_asset.transfer(users.borrower, debt_scale);
+        stop_prank(CheatTarget::One(debt_asset.contract_address));
 
-    //     let params = ModifyPositionParams {
-    //         pool_id,
-    //         collateral_asset: collateral_asset.contract_address,
-    //         debt_asset: debt_asset.contract_address,
-    //         user: users.borrower,
-    //         collateral: Default::default(),
-    //         debt: Amount {
-    //             amount_type: AmountType::Target, denomination: AmountDenomination::Native, value: Zeroable::zero(),
-    //         },
-    //         data: ArrayTrait::new().span()
-    //     };
+        let params = ModifyPositionParams {
+            pool_id,
+            collateral_asset: collateral_asset.contract_address,
+            debt_asset: debt_asset.contract_address,
+            user: users.borrower,
+            collateral: Default::default(),
+            debt: Amount {
+                amount_type: AmountType::Target, denomination: AmountDenomination::Native, value: Zeroable::zero(),
+            },
+            data: ArrayTrait::new().span()
+        };
 
-    //     start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
-    //     singleton.modify_position(params);
-    //     stop_prank(CheatTarget::One(singleton.contract_address));
+        start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
+        singleton.modify_position(params);
+        stop_prank(CheatTarget::One(singleton.contract_address));
 
-    //     // Redemption
+        // Redemption
 
-    //     let shutdown_config = extension.shutdown_config(pool_id);
+        let shutdown_config = extension.shutdown_config(pool_id);
 
-    //     start_warp(CheatTarget::All, get_block_timestamp() + shutdown_config.subscription_period + 1);
+        start_warp(CheatTarget::All, get_block_timestamp() + shutdown_config.subscription_period + 1);
 
-    //     start_prank(CheatTarget::One(extension.contract_address), users.creator);
-    //     extension.set_shutdown_mode(pool_id, ShutdownMode::Redemption);
-    //     stop_prank(CheatTarget::One(extension.contract_address));
+        start_prank(CheatTarget::One(extension.contract_address), users.creator);
+        extension.set_shutdown_mode(pool_id, ShutdownMode::Redemption);
+        stop_prank(CheatTarget::One(extension.contract_address));
 
-    //     let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
+        let status = extension.shutdown_status(pool_id, collateral_asset.contract_address, debt_asset.contract_address);
 
-    //     assert(status.shutdown_mode == ShutdownMode::Redemption, 'not-in-redemption');
+        assert(status.shutdown_mode == ShutdownMode::Redemption, 'not-in-redemption');
 
-    //     mock_pragma_oracle.set_price(COLL_PRAGMA_KEY, SCALE_128);
+        mock_pragma_oracle.set_price(COLL_PRAGMA_KEY, SCALE_128);
 
-    //     let v_token = IERC4626Dispatcher {
-    //         contract_address: extension.v_token_for_collateral_asset(pool_id, collateral_asset.contract_address)
-    //     };
+        let v_token = IERC4626Dispatcher {
+            contract_address: extension.v_token_for_collateral_asset(pool_id, collateral_asset.contract_address)
+        };
 
-    //     start_prank(CheatTarget::One(v_token.contract_address), extension.contract_address);
-    //     IVTokenV2Dispatcher { contract_address: v_token.contract_address }
-    //         .mint_v_token(users.borrower, 1000_0000000000);
-    //     stop_prank(CheatTarget::One(v_token.contract_address));
+        start_prank(CheatTarget::One(v_token.contract_address), extension.contract_address);
+        IVTokenV2Dispatcher { contract_address: v_token.contract_address }
+            .mint_v_token(users.borrower, 1000_0000000000);
+        stop_prank(CheatTarget::One(v_token.contract_address));
 
-    //     assert(v_token.max_deposit(Zeroable::zero()) == 0, 'max_deposit neq');
-    //     assert(v_token.preview_deposit(1000_0000000000) == 0, 'preview_deposit neq');
-    //     assert(v_token.max_mint(Zeroable::zero()) == 0, 'max_mint neq');
-    //     assert(v_token.preview_mint(1000_0000000000) == 0, 'preview_mint neq');
-    //     assert(v_token.max_withdraw(users.borrower) > 0, 'max_withdraw neq');
-    //     assert(v_token.preview_withdraw(1000_0000000000) > 0, 'preview_withdraw neq');
-    //     assert(v_token.max_redeem(users.borrower) > 0, 'max_redeem neq');
-    //     assert(v_token.preview_redeem(1000_0000000000) > 0, 'preview_redeem neq');
+        assert(v_token.max_deposit(Zeroable::zero()) == 0, 'max_deposit neq');
+        assert(v_token.preview_deposit(1000_0000000000) == 0, 'preview_deposit neq');
+        assert(v_token.max_mint(Zeroable::zero()) == 0, 'max_mint neq');
+        assert(v_token.preview_mint(1000_0000000000) == 0, 'preview_mint neq');
+        assert(v_token.max_withdraw(users.borrower) > 0, 'max_withdraw neq');
+        assert(v_token.preview_withdraw(1000_0000000000) > 0, 'preview_withdraw neq');
+        assert(v_token.max_redeem(users.borrower) > 0, 'max_redeem neq');
+        assert(v_token.preview_redeem(1000_0000000000) > 0, 'preview_redeem neq');
 
-    //     let params = ModifyPositionParams {
-    //         pool_id,
-    //         collateral_asset: collateral_asset.contract_address,
-    //         debt_asset: debt_asset.contract_address,
-    //         user: users.borrower,
-    //         collateral: Amount {
-    //             amount_type: AmountType::Delta, denomination: AmountDenomination::Native, value: SCALE.into(),
-    //         },
-    //         debt: Default::default(),
-    //         data: ArrayTrait::new().span()
-    //     };
+        let params = ModifyPositionParams {
+            pool_id,
+            collateral_asset: collateral_asset.contract_address,
+            debt_asset: debt_asset.contract_address,
+            user: users.borrower,
+            collateral: Amount {
+                amount_type: AmountType::Delta, denomination: AmountDenomination::Native, value: SCALE.into(),
+            },
+            debt: Default::default(),
+            data: ArrayTrait::new().span()
+        };
 
-    //     start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
-    //     singleton.modify_position(params);
-    //     stop_prank(CheatTarget::One(singleton.contract_address));
-    // }
+        start_prank(CheatTarget::One(singleton.contract_address), users.borrower);
+        singleton.modify_position(params);
+        stop_prank(CheatTarget::One(singleton.contract_address));
+    }
 
     #[test]
     #[should_panic(expected: "in-redemption")]

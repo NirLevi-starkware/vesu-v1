@@ -114,20 +114,6 @@ struct ModifyPositionParams {
 }
 
 #[derive(PartialEq, Copy, Drop, Serde)]
-struct TransferPositionParams {
-    from_collateral_asset: ContractAddress,
-    from_debt_asset: ContractAddress,
-    to_collateral_asset: ContractAddress,
-    to_debt_asset: ContractAddress,
-    from_user: ContractAddress,
-    to_user: ContractAddress,
-    collateral: UnsignedAmount,
-    debt: UnsignedAmount,
-    from_data: Span<felt252>,
-    to_data: Span<felt252>
-}
-
-#[derive(PartialEq, Copy, Drop, Serde)]
 struct LiquidatePositionParams {
     collateral_asset: ContractAddress,
     debt_asset: ContractAddress,

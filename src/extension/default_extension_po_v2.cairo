@@ -112,9 +112,6 @@ trait IDefaultExtensionPOV2<TContractState> {
     fn set_shutdown_mode(ref self: TContractState, shutdown_mode: ShutdownMode);
     fn set_pool_owner(ref self: TContractState, owner: ContractAddress);
     fn set_shutdown_mode_agent(ref self: TContractState, shutdown_mode_agent: ContractAddress);
-    fn update_shutdown_status(
-        ref self: TContractState, collateral_asset: ContractAddress, debt_asset: ContractAddress
-    ) -> ShutdownMode;
     fn set_fee_config(ref self: TContractState, fee_config: FeeConfig);
     fn claim_fees(ref self: TContractState, collateral_asset: ContractAddress);
 
@@ -717,21 +714,6 @@ mod DefaultExtensionPOV2 {
             self.position_hooks.shutdown_status(ref context)
         }
 
-        /// Updates the shutdown mode for a specific pair.
-        /// See `update_shutdown_status` in `position_hooks.cairo`.
-        /// # Arguments
-        /// * `collateral_asset` - address of the collateral asset
-        /// * `debt_asset` - address of the debt asset
-        /// # Returns
-        /// * `shutdown_mode` - shutdown mode
-        fn update_shutdown_status(
-            ref self: ContractState, collateral_asset: ContractAddress, debt_asset: ContractAddress
-        ) -> ShutdownMode {
-            let singleton = ISingletonV2Dispatcher { contract_address: self.singleton.read() };
-            let mut context = singleton.context(collateral_asset, debt_asset, Zeroable::zero());
-            self.position_hooks.update_shutdown_status(ref context)
-        }
-
         /// Sets the fee configuration
         /// # Arguments
         /// * `fee_config` - new fee configuration parameters
@@ -881,71 +863,6 @@ mod DefaultExtensionPOV2 {
                 .position_hooks
                 .after_modify_position(
                     context, collateral_delta, collateral_shares_delta, debt_delta, nominal_debt_delta, data, caller
-                )
-        }
-
-        /// Transfer position callback. Called by the Singleton contract before transferring collateral / debt
-        /// between position.
-        // / See `before_transfer_position` in `position_hooks.cairo`.
-        /// # Arguments
-        /// * `from_context` - contextual state of the user (position owner) from which to transfer collateral / debt
-        /// * `to_context` - contextual state of the user (position owner) to which to transfer collateral / debt
-        /// * `collateral` - amount of collateral to be transferred
-        /// * `debt` - amount of debt to be transferred
-        /// * `data` - modify position data
-        /// * `caller` - address of the caller
-        /// # Returns
-        /// * `collateral` - amount of collateral to be transferred
-        /// * `debt` - amount of debt to be transferred
-        fn before_transfer_position(
-            ref self: ContractState,
-            from_context: Context,
-            to_context: Context,
-            collateral: UnsignedAmount,
-            debt: UnsignedAmount,
-            data: Span<felt252>,
-            caller: ContractAddress
-        ) -> (UnsignedAmount, UnsignedAmount) {
-            assert!(get_caller_address() == self.singleton.read(), "caller-not-singleton");
-            self.position_hooks.before_transfer_position(from_context, to_context, collateral, debt, data, caller)
-        }
-
-        /// Transfer position callback. Called by the Singleton contract after transferring collateral / debt
-        /// See `after_transfer_position` in `position_hooks.cairo`.
-        /// # Arguments
-        /// * `from_context` - contextual state of the user (position owner) from which to transfer collateral / debt
-        /// * `to_context` - contextual state of the user (position owner) to which to transfer collateral / debt
-        /// * `collateral_delta` - collateral balance delta that was transferred
-        /// * `collateral_shares_delta` - collateral shares balance delta that was transferred
-        /// * `debt_delta` - debt balance delta that was transferred
-        /// * `nominal_debt_delta` - nominal debt balance delta that was transferred
-        /// * `data` - modify position data
-        /// * `caller` - address of the caller
-        /// # Returns
-        /// * `bool` - true if the callback was successful
-        fn after_transfer_position(
-            ref self: ContractState,
-            from_context: Context,
-            to_context: Context,
-            collateral_delta: u256,
-            collateral_shares_delta: u256,
-            debt_delta: u256,
-            nominal_debt_delta: u256,
-            data: Span<felt252>,
-            caller: ContractAddress
-        ) -> bool {
-            assert!(get_caller_address() == self.singleton.read(), "caller-not-singleton");
-            self
-                .position_hooks
-                .after_transfer_position(
-                    from_context,
-                    to_context,
-                    collateral_delta,
-                    collateral_shares_delta,
-                    debt_delta,
-                    nominal_debt_delta,
-                    data,
-                    caller
                 )
         }
 

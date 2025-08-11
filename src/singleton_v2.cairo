@@ -162,9 +162,7 @@ mod SingletonV2 {
         #[key]
         to_debt_asset: ContractAddress,
         #[key]
-        from_user: ContractAddress,
-        #[key]
-        to_user: ContractAddress,
+        user: ContractAddress,
         collateral_delta: i257,
         collateral_shares_delta: i257,
         debt_delta: i257,
@@ -911,7 +909,7 @@ mod SingletonV2 {
             response
         }
 
-        /// Transfers a position's collateral and or debt balances to another `from_user` position.
+        /// Transfers a position's collateral and or debt balances to another position of the same user.
         /// Either the collateral or debt asset addresses match. For transfers to the same position
         /// `modify_position` should be used instead.
         /// # Arguments
@@ -921,7 +919,7 @@ mod SingletonV2 {
             from_debt_asset,
             to_collateral_asset,
             to_debt_asset,
-            from_user,
+            user,
             collateral,
             debt,
             from_data,
@@ -941,11 +939,10 @@ mod SingletonV2 {
 
             let extension = IExtensionDispatcher { contract_address: self.extension.read() };
 
-            let from_context = self.context(from_collateral_asset, from_debt_asset, from_user);
+            let from_context = self.context(from_collateral_asset, from_debt_asset, user);
             let from_collateral_asset_fee_shares = from_context.collateral_asset_fee_shares;
             let from_debt_asset_fee_shares = from_context.debt_asset_fee_shares;
-            let to_user = from_user;
-            let to_context = self.context(to_collateral_asset, to_debt_asset, to_user);
+            let to_context = self.context(to_collateral_asset, to_debt_asset, user);
             let to_collateral_asset_fee_shares = to_context.collateral_asset_fee_shares;
             let to_debt_asset_fee_shares = to_context.debt_asset_fee_shares;
 
@@ -953,8 +950,8 @@ mod SingletonV2 {
             let (collateral, debt) = extension
                 .before_transfer_position(from_context, to_context, collateral, debt, from_data, get_caller_address());
 
-            let mut from_position = self.positions.read((from_collateral_asset, from_debt_asset, from_user));
-            let mut to_position = self.positions.read((to_collateral_asset, to_debt_asset, to_user));
+            let mut from_position = self.positions.read((from_collateral_asset, from_debt_asset, user));
+            let mut to_position = self.positions.read((to_collateral_asset, to_debt_asset, user));
 
             let (collateral_delta, collateral_shares_delta) = if from_collateral_asset == to_collateral_asset {
                 let (collateral_asset_config, collateral_asset_fee_shares) = self.asset_config(from_collateral_asset);
@@ -998,8 +995,8 @@ mod SingletonV2 {
                 to_position.collateral_shares += collateral_shares_delta.abs;
 
                 // store the updated positions and asset configuration
-                self.positions.write((from_collateral_asset, from_debt_asset, from_user), from_position);
-                self.positions.write((to_collateral_asset, to_debt_asset, to_user), to_position);
+                self.positions.write((from_collateral_asset, from_debt_asset, user), from_position);
+                self.positions.write((to_collateral_asset, to_debt_asset, user), to_position);
                 self.asset_configs.write(from_collateral_asset, collateral_asset_config);
 
                 (collateral_delta, collateral_shares_delta)
@@ -1072,8 +1069,8 @@ mod SingletonV2 {
                 to_position.nominal_debt += nominal_debt_delta.abs;
 
                 // store the updated positions and asset configuration
-                self.positions.write((from_collateral_asset, from_debt_asset, from_user), from_position);
-                self.positions.write((to_collateral_asset, to_debt_asset, to_user), to_position);
+                self.positions.write((from_collateral_asset, from_debt_asset, user), from_position);
+                self.positions.write((to_collateral_asset, to_debt_asset, user), to_position);
                 self.asset_configs.write(from_debt_asset, debt_asset_config);
 
                 (debt_delta, nominal_debt_delta)
@@ -1094,8 +1091,8 @@ mod SingletonV2 {
                 (Zeroable::zero(), Zeroable::zero())
             };
 
-            let mut from_context = self.context(from_collateral_asset, from_debt_asset, from_user);
-            let mut to_context = self.context(to_collateral_asset, to_debt_asset, to_user);
+            let mut from_context = self.context(from_collateral_asset, from_debt_asset, user);
+            let mut to_context = self.context(to_collateral_asset, to_debt_asset, user);
 
             // fee shares have to be re-attributed since the rate accumulator has already been updated (written to storage)
             from_context.collateral_asset_fee_shares = from_collateral_asset_fee_shares;
@@ -1136,8 +1133,7 @@ mod SingletonV2 {
                         from_debt_asset,
                         to_collateral_asset,
                         to_debt_asset,
-                        from_user,
-                        to_user,
+                        user,
                         collateral_delta,
                         collateral_shares_delta,
                         debt_delta,

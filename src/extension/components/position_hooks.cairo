@@ -434,7 +434,6 @@ mod position_hooks_component {
         /// * `debt_delta` - debt balance delta of the position
         /// * `nominal_debt_delta` - nominal debt balance delta of the position
         /// * `data` - modify position data (optional)
-        /// * `caller` - address of the caller
         /// # Returns
         /// * `bool` - true if it was successful, false otherwise
         fn after_modify_position(
@@ -445,7 +444,6 @@ mod position_hooks_component {
             debt_delta: i257,
             nominal_debt_delta: i257,
             data: Span<felt252>,
-            caller: ContractAddress
         ) -> bool {
             self.update_pair(ref context, collateral_shares_delta, nominal_debt_delta);
 

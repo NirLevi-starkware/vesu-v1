@@ -21,14 +21,6 @@ trait IExtension<TContractState> {
         last_rate_accumulator: u256,
         last_full_utilization_rate: u256,
     ) -> (u256, u256);
-    fn before_modify_position(
-        ref self: TContractState,
-        context: Context,
-        collateral: Amount,
-        debt: Amount,
-        data: Span<felt252>,
-        caller: ContractAddress
-    ) -> (Amount, Amount);
     fn after_modify_position(
         ref self: TContractState,
         context: Context,
@@ -37,7 +29,6 @@ trait IExtension<TContractState> {
         debt_delta: i257,
         nominal_debt_delta: i257,
         data: Span<felt252>,
-        caller: ContractAddress
     ) -> bool;
     fn before_transfer_position(
         ref self: TContractState,

@@ -17,7 +17,6 @@ trait IFlashloanReceiver<TContractState> {
 
 #[starknet::interface]
 trait ISingletonV2<TContractState> {
-    fn extension(self: @TContractState) -> ContractAddress;
     fn asset_config(self: @TContractState, asset: ContractAddress) -> (AssetConfig, u256);
     fn ltv_config(self: @TContractState, collateral_asset: ContractAddress, debt_asset: ContractAddress) -> LTVConfig;
     fn position(
@@ -63,13 +62,11 @@ trait ISingletonV2<TContractState> {
     );
     fn modify_delegation(ref self: TContractState, delegatee: ContractAddress, delegation: bool);
     fn donate_to_reserve(ref self: TContractState, asset: ContractAddress, amount: u256);
-    fn retrieve_from_reserve(ref self: TContractState, asset: ContractAddress, receiver: ContractAddress, amount: u256);
     fn set_asset_config(ref self: TContractState, params: AssetParams);
     fn set_ltv_config(
         ref self: TContractState, collateral_asset: ContractAddress, debt_asset: ContractAddress, ltv_config: LTVConfig
     );
     fn set_asset_parameter(ref self: TContractState, asset: ContractAddress, parameter: felt252, value: u256);
-    fn set_extension(ref self: TContractState, extension: ContractAddress);
     fn claim_fee_shares(ref self: TContractState, asset: ContractAddress);
 
     fn upgrade_name(self: @TContractState) -> felt252;
@@ -100,7 +97,7 @@ mod SingletonV2 {
             ISingletonV2, ISingletonV2Dispatcher, ISingletonV2DispatcherTrait, IFlashloanReceiverDispatcher,
             IFlashloanReceiverDispatcherTrait
         },
-        extension::interface::{IExtensionDispatcher, IExtensionDispatcherTrait},
+        extension::interface::{IExtensionLibraryDispatcher,},
         vendor::{
             erc20::{ERC20ABIDispatcher as IERC20Dispatcher, ERC20ABIDispatcherTrait},
             ownable::{OwnableComponent, OwnableComponent::InternalImpl}
@@ -109,8 +106,9 @@ mod SingletonV2 {
 
     #[storage]
     struct Storage {
-        // The address of the extension contract
-        extension: ContractAddress,
+        // TODO: initialize constructor
+        // The class hash of the extension contract
+        extension_class_hash: ClassHash,
         // tracks the configuration / state of each asset
         // asset -> asset configuration
         asset_configs: LegacyMap::<ContractAddress, AssetConfig>,
@@ -131,8 +129,6 @@ mod SingletonV2 {
 
     #[derive(Drop, starknet::Event)]
     struct CreatePool {
-        #[key]
-        extension: ContractAddress,
         #[key]
         creator: ContractAddress
     }
@@ -269,12 +265,6 @@ mod SingletonV2 {
     }
 
     #[derive(Drop, starknet::Event)]
-    struct SetExtension {
-        #[key]
-        extension: ContractAddress
-    }
-
-    #[derive(Drop, starknet::Event)]
     struct ContractUpgraded {
         new_implementation: ClassHash,
     }
@@ -297,7 +287,6 @@ mod SingletonV2 {
         SetLTVConfig: SetLTVConfig,
         SetAssetConfig: SetAssetConfig,
         SetAssetParameter: SetAssetParameter,
-        SetExtension: SetExtension,
         ContractUpgraded: ContractUpgraded
     }
 
@@ -312,20 +301,20 @@ mod SingletonV2 {
         owner: ContractAddress,
         asset_params: Span<AssetParams>,
         ltv_params: Span<LTVParams>,
-        extension: ContractAddress
+        extension_class_hash: ClassHash
     ) {
         self.ownable.initializer(owner);
-        self.create_pool(:asset_params, :ltv_params, :extension);
+        self.create_pool(:asset_params, :ltv_params);
+        self.extension_class_hash.write(extension_class_hash);
     }
 
     /// Computes the new rate accumulator and the interest rate at full utilization for a given asset in a pool
     /// # Arguments
-    /// * `extension` - address of the pool's extension contract
     /// * `asset` - address of the asset
     /// # Returns
     /// * `asset_config` - asset config containing the updated last rate accumulator and full utilization rate
     fn rate_accumulator(
-        extension: ContractAddress, asset: ContractAddress, mut asset_config: AssetConfig
+        ref self: ContractState, asset: ContractAddress, mut asset_config: AssetConfig
     ) -> AssetConfig {
         let AssetConfig { total_nominal_debt, scale, .. } = asset_config;
         let AssetConfig { last_rate_accumulator, last_full_utilization_rate, last_updated, .. } = asset_config;
@@ -333,7 +322,7 @@ mod SingletonV2 {
         // calculate utilization based on previous rate accumulator
         let utilization = calculate_utilization(asset_config.reserve, total_debt);
         // calculate the new rate accumulator
-        let (rate_accumulator, full_utilization_rate) = IExtensionDispatcher { contract_address: extension }
+        let (rate_accumulator, full_utilization_rate) = IExtensionLibraryDispatcher { class_hash: self.extension_class_hash.read() }
             .rate_accumulator(asset, utilization, last_updated, last_rate_accumulator, last_full_utilization_rate,);
 
         asset_config.last_rate_accumulator = rate_accumulator;
@@ -461,13 +450,6 @@ mod SingletonV2 {
             assert!(debt_value == 0 || debt_value > context.debt_asset_config.floor, "dusty-debt-balance");
         }
 
-        /// Sets the pool's extension address.
-        fn _set_extension(ref self: ContractState, extension: ContractAddress) {
-            assert!(extension.is_non_zero(), "extension-is-zero");
-            self.extension.write(extension);
-            self.emit(SetExtension { extension });
-        }
-
         /// Settles all intermediate outstanding collateral and debt deltas for a position / user
         fn settle_position(
             ref self: ContractState,
@@ -503,7 +485,7 @@ mod SingletonV2 {
             if fee_shares == 0 {
                 return;
             }
-            let mut position = self.positions.read((asset, Zeroable::zero(), extension));
+            let mut position = self.positions.read((asset, Zeroable::zero(), get_contract_address()));
             position.collateral_shares += fee_shares;
             self.positions.write((asset, Zeroable::zero(), extension), position);
             self.emit(AccrueFees { asset, recipient: extension, fee_shares });
@@ -577,15 +559,11 @@ mod SingletonV2 {
         /// # Arguments
         /// * `asset_params` - array of asset parameters
         /// * `ltv_params` - array of loan-to-value parameters
-        /// * `extension` - address of the extension contract
         fn create_pool(
             ref self: ContractState,
             asset_params: Span<AssetParams>,
             mut ltv_params: Span<LTVParams>,
-            extension: ContractAddress
         ) {
-            // link the extension to the pool
-            self._set_extension(extension);
 
             // store all asset configurations
             let mut asset_params_copy = asset_params;
@@ -604,19 +582,13 @@ mod SingletonV2 {
                     self.set_ltv_config(collateral_asset, debt_asset, LTVConfig { max_ltv: params.max_ltv });
                 };
 
-            self.emit(CreatePool { extension, creator: get_caller_address() });
+                // TODO: do we want to emit the class hash here?
+            self.emit(CreatePool { creator: get_caller_address() });
         }
     }
 
     #[abi(embed_v0)]
     impl SingletonV2Impl of super::ISingletonV2<ContractState> {
-        /// Returns the extension address
-        /// # Returns
-        /// * `extension` - address of the extension contract
-        fn extension(self: @ContractState) -> ContractAddress {
-            self.extension.read()
-        }
-
         /// Returns the configuration / state of an asset
         /// # Arguments
         /// * `asset` - address of the asset
@@ -815,14 +787,16 @@ mod SingletonV2 {
         ) -> Context {
             assert!(collateral_asset != debt_asset, "identical-assets");
 
-            let extension = IExtensionDispatcher { contract_address: self.extension.read() };
-            assert!(extension.contract_address.is_non_zero(), "unknown-pool");
+            let extension = IExtensionLibraryDispatcher { class_hash: self.extension_class_hash.read() };
+            let contract_address = get_contract_address();
+            // TODO: what should i do with this contract address?
+            assert!(contract_address.is_non_zero(), "unknown-pool");
 
             let (collateral_asset_config, mut collateral_asset_fee_shares) = self.asset_config(collateral_asset);
             let (debt_asset_config, mut debt_asset_fee_shares) = self.asset_config(debt_asset);
 
             let mut context = Context {
-                extension: extension.contract_address,
+                extension: contract_address,
                 collateral_asset,
                 debt_asset,
                 collateral_asset_config: collateral_asset_config,
@@ -855,14 +829,6 @@ mod SingletonV2 {
         fn modify_position(ref self: ContractState, params: ModifyPositionParams) -> UpdatePositionResponse {
             let ModifyPositionParams { collateral_asset, debt_asset, user, collateral, debt, data } = params;
 
-            let context = self.context(collateral_asset, debt_asset, user);
-
-            // call before-hook of the extension
-            let extension = IExtensionDispatcher { contract_address: context.extension };
-            let (collateral, debt) = extension
-                .before_modify_position(context, collateral, debt, data, get_caller_address());
-
-            // reload context since the storage might have changed by a reentered call
             let mut context = self.context(collateral_asset, debt_asset, user);
 
             // update the position
@@ -878,6 +844,7 @@ mod SingletonV2 {
             self.assert_position_invariants(context, collateral_delta, debt_delta);
 
             // call after-hook of the extension (assets are not settled yet, only the internal state has been updated)
+            let extension = IExtensionLibraryDispatcher { class_hash: self.extension_class_hash.read() };
             assert!(
                 extension
                     .after_modify_position(
@@ -887,7 +854,6 @@ mod SingletonV2 {
                         debt_delta,
                         nominal_debt_delta,
                         data,
-                        get_caller_address()
                     ),
                 "after-modify-position-failed"
             );
@@ -1158,7 +1124,7 @@ mod SingletonV2 {
             let context = self.context(collateral_asset, debt_asset, user);
 
             // call before-hook of the extension
-            let extension = IExtensionDispatcher { contract_address: context.extension };
+            let extension = IExtensionLibraryDispatcher { class_hash: self.extension_class_hash.read() };
             let (collateral, debt, bad_debt) = extension.before_liquidate_position(context, data, get_caller_address());
 
             // convert unsigned amounts to signed amounts
@@ -1275,28 +1241,6 @@ mod SingletonV2 {
             self.emit(Donate { asset, amount });
         }
 
-        /// Retrieves an amount of an asset from the pool's reserve. Can only be called by the pool's extension
-        /// # Arguments
-        /// * `asset` - address of the asset
-        /// * `receiver` - address of the receiver
-        /// * `amount` - amount to retrieve [asset scale]
-        fn retrieve_from_reserve(
-            ref self: ContractState, asset: ContractAddress, receiver: ContractAddress, amount: u256
-        ) {
-            let extension = self.extension.read();
-            assert!(extension == get_caller_address(), "caller-not-extension");
-            let (mut asset_config, fee_shares) = self.asset_config(asset);
-            assert_asset_config_exists(asset_config);
-            // attribute the accrued fee shares to the pool's extension
-            self.attribute_fee_shares(extension, asset, fee_shares);
-            // retrieve amount from the reserve
-            asset_config.reserve -= amount;
-            self.asset_configs.write(asset, asset_config);
-            transfer_asset(asset, get_contract_address(), receiver, amount, asset_config.is_legacy);
-
-            self.emit(RetrieveReserve { asset, receiver });
-        }
-
         /// Sets the loan-to-value configuration between two assets (pair) in the pool
         /// # Arguments
         /// * `collateral_asset` - address of the collateral asset
@@ -1379,15 +1323,6 @@ mod SingletonV2 {
             self.asset_configs.write(asset, asset_config);
 
             self.emit(SetAssetParameter { asset, parameter, value });
-        }
-
-        /// Sets the pool's extension address.
-        /// # Arguments
-        /// * `extension` - address of the extension contract
-        fn set_extension(ref self: ContractState, extension: ContractAddress) {
-            assert!(get_caller_address() == self.extension.read(), "caller-not-extension");
-            assert!(extension != Zeroable::zero(), "extension-not-set");
-            self._set_extension(extension);
         }
 
         /// Attributes the outstanding fee shares to the pool's extension
